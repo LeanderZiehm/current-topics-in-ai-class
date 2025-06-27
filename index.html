@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Full Screen Moving Square</title>
+<style>
+  html, body {
+    margin: 0;
+    height: 100%;
+    overflow: hidden;
+    font-family: sans-serif;
+    background: #f0f0f0;
+  }
+
+  #square {
+    position: absolute;
+    width: 50px;
+    height: 50px;
+    background: royalblue;
+    /* initial centered position */
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  #inputs {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 15px;
+    background: rgba(255,255,255,0.9);
+    padding: 10px 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  }
+
+  label {
+    font-size: 14px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  input[type=number] {
+    width: 80px;
+    font-size: 16px;
+    padding: 5px;
+  }
+</style>
+</head>
+<body>
+
+<div id="square"></div>
+
+<div id="inputs">
+  <label>
+    X:
+    <input type="number" id="inputX" value="0" step="1" />
+  </label>
+  <label>
+    Y:
+    <input type="number" id="inputY" value="0" step="1" />
+  </label>
+</div>
+
+<script>
+  const square = document.getElementById('square');
+  const inputX = document.getElementById('inputX');
+  const inputY = document.getElementById('inputY');
+
+  function updateSquarePosition() {
+    const x = parseInt(inputX.value, 10) || 0;
+    const y = parseInt(inputY.value, 10) || 0;
+
+    const centerX = window.innerWidth / 2;
+    const centerY = window.innerHeight / 2;
+
+    const squareWidth = square.offsetWidth;
+    const squareHeight = square.offsetHeight;
+
+    // Calculate left and top so that (0,0) is at center of screen
+    const left = centerX + x - squareWidth / 2;
+    const top = centerY + y - squareHeight / 2;
+
+    square.style.left = left + 'px';
+    square.style.top = top + 'px';
+    square.style.transform = ''; // clear transform since we use exact pixel positioning
+  }
+
+  // Update position on input change
+  inputX.addEventListener('input', updateSquarePosition);
+  inputY.addEventListener('input', updateSquarePosition);
+
+  // Update on window resize to keep center consistent
+  window.addEventListener('resize', updateSquarePosition);
+
+  // Initialize position on load
+  updateSquarePosition();
+</script>
+
+</body>
+</html>
