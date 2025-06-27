@@ -4,27 +4,183 @@
   <meta charset="UTF-8" />
   <title>Prompt Sharing & Image Generator</title>
   <style>
-    * { box-sizing: border-box; }
-    body { margin: 0; font-family: sans-serif; height: 100vh; display: flex; }
-    #sidebar { width: 250px; border-right:1px solid #ddd; padding:10px; overflow-y:auto; user-select:none;}
-    .chip { padding:6px 12px; margin:4px; background:#e0e0e0; border-radius:16px; cursor:pointer; transition:0.2s;}
-    .chip.selected { background:#1a73e8;color:#fff;font-weight:bold; }
-    #main { flex:1; display:flex; flex-direction:column; position:relative; }
-    #top-bar { height:50px; display:flex; justify-content: space-between; align-items:center; padding:0 20px; border-bottom:1px solid #ccc; background:#fafafa; }
-    #top-bar h1 { margin:0; font-size:1.2rem; }
-    #top-bar .actions button { background:none; border:none; margin-left:10px; cursor:pointer; font-size:1.2rem; }
-    #image-container { flex:1; display:flex; justify-content:center; align-items:center; position:relative; background:#fff; }
-    #image-container img { max-width:90%; max-height:90%; border-radius:6px; display:none; }
-    #loading-spinner { position:absolute; width:60px;height:60px;border:6px solid #ccc;border-top:6px solid #1a73e8;border-radius:50%;animation:spin 1s linear infinite;display:none;}
-    @keyframes spin{to{transform:rotate(360deg);}}
-    #prompt-bar { position:absolute; bottom:0; left:0; right:0; display:flex; align-items:center; padding:10px; background:#fff; border-top:1px solid #ccc; gap:8px; z-index:10; }
-    #chip-container { display:flex; overflow-x:auto; gap:5px; }
-    .prompt-chip { background:#1a73e8;color:#fff;padding:4px 10px;border-radius:12px;display:flex;align-items:center;white-space:nowrap;}
-    .prompt-chip button{background:none;border:none;color:#fff;margin-left:6px;cursor:pointer;font-size:16px;}
-    #prompt-input { flex:1;padding:6px 10px;border:1px solid #ccc;border-radius:12px;font-size:14px; }
-    #send-btn { padding:8px 16px;background:#1a73e8;color:#fff;border:none;border-radius:16px;cursor:pointer;font-size:14px;}
+     * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      font-family: sans-serif;
+      height: 100vh;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* Sidebar */
+    #sidebar {
+      width: 300px;
+      border-right: 1px solid #ddd;
+      padding: 10px;
+      box-sizing: border-box;
+      background: #f9f9f9;
+      overflow-y: auto;
+      user-select: none; /* disable text selection in sidebar */
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+    }
+    .chip {
+      display: inline-block;
+      background: #e0e0e0;
+      padding: 6px 12px;
+      margin: 4px;
+      border-radius: 16px;
+      font-size: 13px;
+      cursor: pointer;
+      user-select: none; /* disable text selection on each chip */
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      transition: background-color 0.2s, color 0.2s;
+    }
+    .chip.selected {
+      background-color: #1a73e8;
+      color: white;
+      font-weight: bold;
+    }
+
+    /* Main Area */
+    #main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    #top-bar {
+      height: 40px;
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      padding: 0 10px;
+      background: #fafafa;
+      border-bottom: 1px solid #ccc;
+    }
+    #top-bar a {
+      text-decoration: none;
+      color: #1a73e8;
+      font-weight: bold;
+    }
+
+    #image-container {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: #fff;
+      position: relative;
+      overflow: hidden;
+    }
+
+    #image-container img {
+      max-width: 90%;
+      max-height: 90%;
+      object-fit: contain;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      display: none; /* hide initially */
+    }
+
+    /* Prompt Bar */
+    #prompt-bar {
+      position: absolute;
+      bottom: 0;
+      left: 0px; /* match sidebar width */
+      right: 0;
+      background: #ffffff;
+      border-top: 1px solid #ccc;
+      padding: 10px;
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      z-index: 10;
+    }
+
+    #chip-container {
+      display: flex;
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      max-width: calc(100% - 150px); /* leave space for input and button */
+    }
+
+    .prompt-chip {
+      background:#1a73e8;
+      color:white;
+      padding: 4px 10px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      font-size: 14px;
+      margin-right: 5px;
+      white-space: nowrap;
+    }
+
+    .prompt-chip button {
+      background: none;
+      border: none;
+      margin-left: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      line-height: 1;
+    }
+
+    #prompt-input {
+      flex-grow: 1;
+      min-width: 100px;
+      border: 1px solid #ccc;
+      border-radius: 12px;
+      padding: 6px 10px;
+      font-size: 14px;
+    }
+
+    #send-btn {
+      padding: 8px 16px;
+      background: #1a73e8;
+      color: white;
+      border: none;
+      border-radius: 16px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    @media (max-width: 600px) {
+      #sidebar {
+        display: none;
+      }
+      #prompt-bar {
+        left: 0;
+      }
+    }
+
+    #loading-spinner {
+      position: absolute;
+      width: 60px;
+      height: 60px;
+      border: 6px solid #ccc;
+      border-top: 6px solid #1a73e8;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      z-index: 5;
+      display: none;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
     /* Share Modal */
-    #share-modal { position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.4);display:none;justify-content:center;align-items:center; }
+    #share-modal { position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.4);display:none;justify-content:center;align-items:center; z-index: 1000; }
     .modal { background:#fff;padding:20px;border-radius:8px;width:320px;box-shadow:0 4px 12px rgba(0,0,0,0.2); }
     .modal h2{margin-top:0;}
     .modal label{display:block;margin:10px 0 4px;font-weight:600;}
@@ -45,7 +201,7 @@
   <!-- Main container -->
   <div id="main">
     <div id="top-bar">
-      <h1>Generate & Share</h1>
+
       <div class="actions">
         <button id="analytics-btn" title="Analytics 📊">📊</button>
      
@@ -215,7 +371,7 @@
       shareModal.style.display='flex';
     };
     
-    <!-- editSlug.onclick = ()=> shareUrl.removeAttribute('readonly'); -->
+    
     tagInput.addEventListener('keydown', e=>{
       if(e.key==='Enter' && tagInput.value.trim()){
         const span = document.createElement('span'); span.className='chip'; span.textContent=tagInput.value.trim(); shareUrl.parentNode.querySelector('.tags').append(span);

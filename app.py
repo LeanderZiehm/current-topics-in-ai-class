@@ -1,10 +1,11 @@
 from flask import Flask, render_template
+from share import share_bp
 # from home import home_bp  # Import the blueprint
 
 app = Flask(__name__)
 
 # Register the blueprint
-# app.register_blueprint(home_bp)
+app.register_blueprint(share_bp)
 
 @app.route('/home')
 def home():
