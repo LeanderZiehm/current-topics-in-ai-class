@@ -12,11 +12,14 @@ def home():
 
 @app.route('/prompt-template-system')
 def prompt_template_system():
-    return render_template("prompt-template-system.html")
+    return render_template("prompt-template-system_v2.html")
 
 @app.route('/prompt-tracking')
 def prompt_tracking():
     return render_template("prompt-tracking.html")
+@app.route('/analytics')
+def analytics():
+    return render_template("analytics.html")
 
 
 
