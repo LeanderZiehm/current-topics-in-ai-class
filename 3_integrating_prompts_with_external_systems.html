@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Stable Diffusion Prompt Builder</title>
+  <style>
+    body { font-family: sans-serif; margin: 0; padding: 0; display: flex; height: 100vh; }
+    #sidebar { width: 250px; border-right: 1px solid #ddd; padding: 1em; box-sizing: border-box; overflow-y: auto; }
+    #main { flex: 1; padding: 1em; display: flex; flex-direction: column; }
+    .category { margin-bottom: 1em; }
+    .category h4 { margin: .5em 0; }
+    .chip { display: inline-block; background: #f0f0f0; padding: .3em .6em; margin: .2em; border-radius: 12px; cursor: pointer; user-select: none; }
+    #prompt-builder { flex: 1; border: 1px dashed #ccc; padding: .5em; overflow-y: auto; }
+    #prompt-builder ul { list-style: none; margin:0; padding:0; }
+    #prompt-builder li { background: #fafafa; margin: .3em 0; padding: .5em; display: flex; align-items: center; border: 1px solid #ddd; border-radius: 4px; }
+    .chunk-text { flex:1; }
+
+    .remove-btn { background: none; border: none; color: #c00; cursor: pointer; font-size: 1.2em; }
+    #controls { margin-top: 1em; display: flex; flex-wrap: wrap; gap: .5em; }
+    #controls input, #controls select, #controls button { padding: .4em; }
+    .version-list { max-height: 100px; overflow-y: auto; border:1px solid #ccc; padding: .5em; }
+    .version-item { font-size: .9em; cursor: pointer; margin: .2em 0; }
+    .version-item:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+  <div id="sidebar">
+
+    <div class="category">
+      <h4>Subjects & Objects</h4>
+      <div class="chip" data-text="portrait of a fox">Fox Portrait</div>
+      <div class="chip" data-text="futuristic cityscape">Futuristic Cityscape</div>
+      <div class="chip" data-text="{subject}">Subject Placeholder</div>
+    </div>
+        <div class="category">
+      <h4>Artists & Styles</h4>
+      <div class="chip" data-text="by Greg Rutkowski">Greg Rutkowski</div>
+      <div class="chip" data-text="in the style of Ukiyo-e">Ukiyo-e</div>
+    </div>
+    <div class="category">
+      <h4>Modifiers</h4>
+      <div class="chip" data-text="hyper-realistic">Hyper-realistic</div>
+      <div class="chip" data-text="cinematic lighting">Cinematic Lighting</div>
+      <div class="chip" data-text="35 mm lens">35 mm Lens</div>
+      <div class="chip" data-text="{lighting}">Lighting Placeholder</div>
+    </div>
+  </div>
+
+  <div id="main">
+    <h3>Prompt Builder</h3>
+    <div id="prompt-builder">
+      <ul id="prompt-list"></ul>
+    </div>
+
+    <div id="controls">
+      <input type="text" id="template-name" placeholder="Template Name…"/>
+      <button id="save-template">Save Template</button>
+      <select id="load-template">
+        <option value="">Load Template…</option>
+      </select>
+      <button id="delete-template">Delete</button>
+
+      <select id="preset-select">
+        <option value="">Apply Preset…</option>
+      </select>
+      <button id="save-preset">Save Preset</button>
+    </div>
+
+    <div class="version-list" id="version-list"></div>
+  </div>
+
+  <!-- SortableJS for drag-and-drop -->
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+  <script>
+    // --- Helper to manage localStorage ---
+    function store(key, val){ localStorage.setItem(key, JSON.stringify(val)); }
+    function load(key){ return JSON.parse(localStorage.getItem(key)||'null'); }
+
+    // --- Prompt builder logic ---
+    const promptList = document.getElementById('prompt-list');
+    function createChunk(text, weight=1){
+      const li = document.createElement('li');
+      li.dataset.text = text;
+      // text
+      const span = document.createElement('span');
+      span.className = 'chunk-text';
+      span.textContent = text;
+      li.appendChild(span);
+      // slider
+
+      // display weight
+      const displayWeight = document.createElement('span');
+      displayWeight.textContent = weight;
+      li.appendChild(displayWeight);
+      // remove
+      const remove = document.createElement('button');
+      remove.className='remove-btn'; remove.innerHTML='×';
+      remove.onclick = ()=> li.remove();
+      li.appendChild(remove);
+      return li;
+    }
+
+    // clickable chunks
+    document.querySelectorAll('.chip').forEach(chip=>{
+      chip.onclick = ()=>{
+        promptList.appendChild(createChunk(chip.dataset.text));
+      };
+    });
+
+    // enable drag-and-drop
+    Sortable.create(promptList, { animation: 150 });
+
+    // --- Template & Preset management ---
+    const tplSelect = document.getElementById('load-template');
+    const presetSelect = document.getElementById('preset-select');
+    const versionList = document.getElementById('version-list');
+
+    function refreshTemplateList(){
+      tplSelect.innerHTML = '<option value="">Load Template…</option>';
+      const all = load('sd_templates')||{};
+      Object.keys(all).forEach(name=>{
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = name;
+        tplSelect.appendChild(opt);
+      });
+      refreshVersions();
+    }
+    function refreshPresets(){
+      presetSelect.innerHTML = '<option value="">Apply Preset…</option>';
+      const all = load('sd_presets')||{};
+      Object.keys(all).forEach(name=>{
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = name;
+        presetSelect.appendChild(opt);
+      });
+    }
+
+    function refreshVersions(){
+      versionList.innerHTML = '';
+      const sel = tplSelect.value;
+      if(!sel) return;
+      const all = load('sd_templates')||{};
+      const versions = all[sel].versions;
+      versions.forEach((ver,i)=>{
+        const div = document.createElement('div');
+        div.className='version-item';
+        div.textContent = `${i+1}. ${ver.date}`;
+        div.onclick = ()=>{
+          loadTemplate(sel, i);
+        };
+        versionList.appendChild(div);
+      });
+    }
+
+    function getCurrentChunks(){
+      return Array.from(promptList.children).map(li=>({
+        text: li.dataset.text,
+        weight: parseFloat(li.querySelector('input').value)
+      }));
+    }
+
+    // save template (with versioning)
+    document.getElementById('save-template').onclick = ()=>{
+      const name = document.getElementById('template-name').value.trim();
+      if(!name) return alert('Enter a template name');
+      const all = load('sd_templates')||{};
+      const now = new Date().toLocaleString();
+      const version = { date: now, chunks: getCurrentChunks() };
+      if(all[name]){
+        all[name].versions.push(version);
+      } else {
+        all[name] = { versions: [version] };
+      }
+      store('sd_templates', all);
+      refreshTemplateList();
+    };
+
+    // load template
+    tplSelect.onchange = ()=>{
+      refreshVersions();
+      const name = tplSelect.value;
+      if(name){
+        loadTemplate(name, (load('sd_templates')[name].versions.length - 1));
+      }
+    };
+    function loadTemplate(name, versionIndex){
+      const tpl = load('sd_templates')[name].versions[versionIndex];
+      promptList.innerHTML = '';
+      tpl.chunks.forEach(c=> promptList.appendChild(createChunk(c.text, c.weight)));
+    }
+
+    // delete template
+    document.getElementById('delete-template').onclick = ()=>{
+      const name = tplSelect.value;
+      if(!name) return;
+      const all = load('sd_templates');
+      delete all[name];
+      store('sd_templates', all);
+      refreshTemplateList();
+    };
+
+    // presets: just slider defaults
+    document.getElementById('save-preset').onclick = ()=>{
+      const name = prompt('Preset name?');
+      if(!name) return;
+      const steps = +prompt('Number of steps?', '50');
+      const cfg = +prompt('CFG scale?', '7');
+      const seed = prompt('Seed (or "random")', 'random');
+      const all = load('sd_presets')||{};
+      all[name] = { steps, cfg, seed };
+      store('sd_presets', all);
+      refreshPresets();
+    };
+    presetSelect.onchange = ()=>{
+      const p = load('sd_presets')[presetSelect.value];
+      if(!p) return;
+      alert(`Applied preset:\nSteps: ${p.steps}\nCFG: ${p.cfg}\nSeed: ${p.seed}`);
+    };
+
+    // init
+    refreshTemplateList();
+    refreshPresets();
+  </script>
+</body>
+</html>
