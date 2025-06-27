@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en" >
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Combo Teleport Example</title>
+  <style>
+    html, body {
+      margin: 0; height: 100%; overflow: hidden;
+      font-family: sans-serif;
+      background: #f0f0f0;
+      user-select: none;
+    }
+
+        /* The main player square */
+    #player {
+    position: absolute;
+    width: 50px;  /* or whatever size fits your image */
+    height: 50px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 10000; /* higher than shapes */
+    pointer-events: none; /* so clicks pass through */
+    user-select: none;
+    }
+
+
+    /* Container for inputs */
+    #inputs {
+      position: fixed;
+      bottom: 80px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 15px;
+      background: rgba(255,255,255,0.9);
+      padding: 10px 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      z-index: 1000;
+    }
+    #inputs label {
+      font-size: 14px;
+      display: flex;
+      flex-direction: column;
+    }
+    #inputs input[type=number] {
+      width: 80px;
+      font-size: 16px;
+      padding: 5px;
+    }
+
+    /* Button container */
+    #buttons {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 10px;
+      background: rgba(255,255,255,0.9);
+      padding: 10px 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      z-index: 1000;
+    }
+
+    button {
+      padding: 8px 14px;
+      border: none;
+      border-radius: 4px;
+      font-size: 14px;
+      cursor: pointer;
+      user-select: none;
+      transition: background-color 0.2s ease;
+    }
+    button:focus {
+      outline: 2px solid #333;
+    }
+
+    /* Colors */
+    .btn-green { background: #28a745; color: white; }
+    .btn-red { background: #dc3545; color: white; }
+    .btn-blue { background: #007bff; color: white; }
+    .btn-yellow { background: #ffc107; color: black; }
+
+    /* Shapes */
+    .btn-triangle { background: #6f42c1; color: white; }
+    .btn-square { background: #343a40; color: white; }
+    .btn-circle { background: #fd7e14; color: white; }
+
+    /* Set Position Button */
+    #btn-setpos {
+      background: #17a2b8; color: white;
+      font-weight: bold;
+    }
+
+    /* The environment shapes */
+    .shape {
+      position: absolute;
+      width: 60px;
+      height: 60px;
+      opacity: 0.9;
+      box-shadow: 0 0 6px rgba(0,0,0,0.2);
+      cursor: default;
+    }
+    /* Square shape */
+    .shape.square {
+      background-color: steelblue;
+    }
+    /* Circle shape */
+    .shape.circle {
+      background-color: orange;
+      border-radius: 50%;
+    }
+    /* Triangle shape using CSS */
+    .shape.triangle {
+      width: 0;
+      height: 0;
+      border-left: 30px solid transparent;
+      border-right: 30px solid transparent;
+      border-bottom: 60px solid purple;
+      background: none;
+      box-shadow: none;
+    }
+
+  </style>
+</head>
+<body>
+
+<!-- Main player -->
+<div id="player">
+    <img id="player" src="static/player.png" alt="Player" />
+</div>
+
+<!-- Inputs for X Y -->
+<div id="inputs">
+  <label>
+    X:
+    <input type="number" id="inputX" value="0" step="1" />
+  </label>
+  <label>
+    Y:
+    <input type="number" id="inputY" value="0" step="1" />
+  </label>
+</div>
+
+<!-- Buttons -->
+<div id="buttons">
+  <button id="btn-setpos">Set Position To</button>
+  <!-- Colors -->
+  <button class="btn-green" data-type="color" data-value="green">Green</button>
+  <button class="btn-red" data-type="color" data-value="red">Red</button>
+  <button class="btn-blue" data-type="color" data-value="blue">Blue</button>
+  <button class="btn-yellow" data-type="color" data-value="yellow">Yellow</button>
+  <!-- Shapes -->
+  <button class="btn-triangle" data-type="shape" data-value="triangle">Triangle</button>
+  <button class="btn-square" data-type="shape" data-value="square">Square</button>
+  <button class="btn-circle" data-type="shape" data-value="circle">Circle</button>
+</div>
+
+<script>
+  const player = document.getElementById('player');
+  const inputX = document.getElementById('inputX');
+  const inputY = document.getElementById('inputY');
+
+  const btnSetPos = document.getElementById('btn-setpos');
+  const buttons = document.querySelectorAll('#buttons button:not(#btn-setpos)');
+
+  // We'll place some colored shapes randomly in environment
+  // Format: { shape: 'triangle'|'square'|'circle', color: 'green'|'red'|'blue'|'yellow', element: HTMLElement, x: number, y: number }
+  const environmentObjects = [];
+
+  // Helper to create shape divs with color and shape
+  function createShape(shape, color, x, y) {
+    const el = document.createElement('div');
+    el.classList.add('shape', shape);
+
+    // Set color overrides based on color + shape
+    // Since some shapes use background color, others border color
+    // We'll override CSS variables or styles accordingly:
+    if(shape === 'triangle') {
+      // triangle uses border-bottom color
+      const colorMap = {
+        green: 'green',
+        red: 'red',
+        blue: 'blue',
+        yellow: 'yellow'
+      };
+      el.style.borderBottomColor = colorMap[color] || 'purple';
+    } else {
+      // square & circle use backgroundColor
+      const colorMap = {
+        green: '#28a745',
+        red: '#dc3545',
+        blue: '#007bff',
+        yellow: '#ffc107'
+      };
+      el.style.backgroundColor = colorMap[color] || 'steelblue';
+    }
+
+    el.style.left = x + 'px';
+    el.style.top = y + 'px';
+
+    document.body.appendChild(el);
+
+    return el;
+  }
+
+  // Random positions for environment objects (avoid edges)
+  function randomPos() {
+    const margin = 80;
+    return {
+      x: Math.random() * (window.innerWidth - margin*2) + margin,
+      y: Math.random() * (window.innerHeight - margin*2) + margin,
+    };
+  }
+
+  // Create some sample objects
+  function createEnvironment() {
+    environmentObjects.length = 0; // clear if any
+
+    // Example: create one object of each shape/color combination that we'll support
+    // but only some actually created, so combo buttons work only for existing objects
+
+    // Let's create a few:
+    // green triangle
+    let pos = randomPos();
+    environmentObjects.push({shape:'triangle', color:'green', element: createShape('triangle', 'green', pos.x, pos.y), x: pos.x, y: pos.y});
+
+    // red square
+    pos = randomPos();
+    environmentObjects.push({shape:'square', color:'red', element: createShape('square', 'red', pos.x, pos.y), x: pos.x, y: pos.y});
+
+    // blue circle
+    pos = randomPos();
+    environmentObjects.push({shape:'circle', color:'blue', element: createShape('circle', 'blue', pos.x, pos.y), x: pos.x, y: pos.y});
+
+    // yellow square
+    pos = randomPos();
+    environmentObjects.push({shape:'square', color:'yellow', element: createShape('square', 'yellow', pos.x, pos.y), x: pos.x, y: pos.y});
+  }
+
+  createEnvironment();
+
+  // Combo logic
+  // We want user to press in order: 
+  // 1) Set Position To button
+  // 2) Color button (green/red/blue/yellow)
+  // 3) Shape button (triangle/square/circle)
+  // If shape+color combo exists in environmentObjects, teleport the player.
+
+  let comboStep = 0;
+  let chosenColor = null;
+
+  btnSetPos.addEventListener('click', () => {
+    comboStep = 1;
+    chosenColor = null;
+    updateButtonHighlights();
+  });
+
+  buttons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      if(comboStep === 0) {
+        alert('Please press "Set Position To" first.');
+        return;
+      }
+      const type = btn.dataset.type;
+      const value = btn.dataset.value;
+
+      if(comboStep === 1 && type === 'color') {
+        chosenColor = value;
+        comboStep = 2;
+        updateButtonHighlights();
+      } else if(comboStep === 2 && type === 'shape') {
+        // Check if the environment has this color+shape combo
+        const exists = environmentObjects.some(obj => obj.color === chosenColor && obj.shape === value);
+        if(exists) {
+          // Teleport the player to inputX, inputY position
+          teleportPlayer();
+          alert(`Teleported to (${inputX.value}, ${inputY.value}) for ${chosenColor} ${value}!`);
+        } else {
+          alert(`No ${chosenColor} ${value} exists in environment! Combo failed.`);
+        }
+        comboStep = 0;
+        chosenColor = null;
+        updateButtonHighlights();
+      } else {
+        alert('Wrong button order. Start again by pressing "Set Position To".');
+        comboStep = 0;
+        chosenColor = null;
+        updateButtonHighlights();
+      }
+    });
+  });
+
+  function teleportPlayer() {
+    const x = parseInt(inputX.value, 10) || 0;
+    const y = parseInt(inputY.value, 10) || 0;
+
+    const centerX = window.innerWidth / 2;
+    const centerY = window.innerHeight / 2;
+
+    const playerWidth = player.offsetWidth;
+    const playerHeight = player.offsetHeight;
+
+    const left = centerX + x - playerWidth / 2;
+    const top = centerY + y - playerHeight / 2;
+
+    player.style.left = left + 'px';
+    player.style.top = top + 'px';
+    player.style.transform = ''; // clear transform since we use exact positioning
+  }
+
+  // Highlight buttons to show combo progress
+  function updateButtonHighlights() {
+    // Reset all
+    btnSetPos.style.opacity = '1';
+    buttons.forEach(btn => btn.style.opacity = '1');
+
+    if(comboStep === 1) {
+      // Set Position pressed, waiting for color => highlight color buttons
+      btnSetPos.style.opacity = '0.5';
+      buttons.forEach(btn => {
+        if(btn.dataset.type === 'color') btn.style.opacity = '1';
+        else btn.style.opacity = '0.3';
+      });
+    } else if(comboStep === 2) {
+      // Waiting for shape => highlight shape buttons only
+      btnSetPos.style.opacity = '0.5';
+      buttons.forEach(btn => {
+        if(btn.dataset.type === 'shape') btn.style.opacity = '1';
+        else btn.style.opacity = '0.3';
+      });
+    }
+  }
+
+  // Initialize player position at (0,0)
+  teleportPlayer();
+
+  // Update player position on window resize so center stays consistent
+  window.addEventListener('resize', () => {
+    if(comboStep === 0) teleportPlayer();
+  });
+</script>
+
+</body>
+</html>
