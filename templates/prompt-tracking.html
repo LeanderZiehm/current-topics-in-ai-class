@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Prompt Tracking - SDXL Tools</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
+        Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+      margin: 20px;
+      background: #fafafa;
+      color: #333;
+    }
+    h1, h2 {
+      color: #1a73e8;
+    }
+    .section {
+      background: white;
+      padding: 15px 20px;
+      margin-bottom: 30px;
+      border-radius: 8px;
+      box-shadow: 0 4px 10px rgb(0 0 0 / 0.05);
+    }
+    .output-list {
+      max-height: 200px;
+      overflow-y: auto;
+      border: 1px solid #ddd;
+      padding: 10px;
+      border-radius: 6px;
+      font-family: monospace;
+      background: #f9f9f9;
+    }
+    .output-item {
+      margin-bottom: 6px;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 4px;
+      font-size: 13px;
+    }
+    .metadata {
+      margin-top: 10px;
+      font-size: 14px;
+    }
+    .tag {
+      background: #e0e7ff;
+      color: #1a40af;
+      border-radius: 12px;
+      padding: 2px 8px;
+      margin-right: 6px;
+      font-weight: 600;
+      display: inline-block;
+      margin-bottom: 6px;
+    }
+    button {
+      background: #1a73e8;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 6px 12px;
+      cursor: pointer;
+      font-size: 14px;
+      margin-left: 10px;
+      transition: background-color 0.2s ease;
+    }
+    button:hover {
+      background: #1558b0;
+    }
+    input[type="text"] {
+      font-size: 14px;
+      padding: 6px 8px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      width: 220px;
+    }
+    .stars {
+      font-size: 20px;
+      cursor: pointer;
+      user-select: none;
+      color: #ccc;
+    }
+    .stars .filled {
+      color: #fbbf24;
+    }
+    .version-list {
+      margin-top: 10px;
+      font-family: monospace;
+    }
+    .version-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #eee;
+      padding: 6px 0;
+    }
+    .version-item:last-child {
+      border-bottom: none;
+    }
+    .user-roles {
+      margin-top: 10px;
+      font-size: 14px;
+    }
+    .role-badge {
+      background: #d1fae5;
+      color: #065f46;
+      padding: 3px 8px;
+      border-radius: 12px;
+      margin-right: 6px;
+      font-weight: 600;
+      display: inline-block;
+    }
+    .flex-row {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+        #top-bar {
+      height: 40px;
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      padding: 0 10px;
+      background: #fafafa;
+      border-bottom: 1px solid #ccc;
+    }
+    #top-bar a {
+      text-decoration: none;
+      color: #1a73e8;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+        <div id="top-bar">
+      <a href="/home">Home</a>
+    </div>
+
+  <h1>Prompt Tracking Dashboard</h1>
+
+  <!-- Prompt Sharing -->
+  <div class="section">
+    <h2>1. Prompt Sharing</h2>
+    <label>
+      Shareable URL:
+      <input type="text" id="share-url" readonly value="https://yourdomain.com/abc123" />
+    </label>
+    <br/><br/>
+    <label>
+      Custom Slug:
+      <input type="text" id="custom-slug" placeholder="Enter custom slug" />
+      <button onclick="saveSlug()">Save</button>
+    </label>
+    <p id="slug-msg" style="color:green; margin-top:8px;"></p>
+  </div>
+
+  <!-- Version Control -->
+  <div class="section">
+    <h2>2. Prompt Version Control</h2>
+    <div id="version-list" class="version-list"></div>
+  </div>
+
+  <!-- User Roles and Collaboration -->
+  <div class="section">
+    <h2>3. Multi-user Access and Collaboration</h2>
+    <div class="user-roles">
+      <span class="role-badge">Admin</span>
+      <span class="role-badge">Editor</span>
+      <span class="role-badge">Viewer</span>
+    </div>
+    <p>Audit trail and change logs would appear here.</p>
+  </div>
+
+  <!-- Metadata -->
+  <div class="section">
+    <h2>4. Prompt Metadata</h2>
+    <div>
+      <strong>Tags:</strong>
+      <span class="tag">portrait</span>
+      <span class="tag">cyberpunk</span>
+      <span class="tag">vivid</span>
+    </div>
+    <div class="metadata">
+      <strong>Description:</strong><br/>
+      This prompt generates vivid cyberpunk style portraits with high detail and moody lighting.
+    </div>
+    <div class="metadata">
+      <strong>Execution Count:</strong> <span id="execution-count">42</span><br/>
+      <strong>Stars:</strong>
+      <span id="star-rating" class="stars" title="Click to add star"></span> (<span id="star-count">17</span> stars)
+    </div>
+  </div>
+
+  <!-- Prompt Outputs -->
+  <div class="section">
+    <h2>5. Prompt Outputs (History)</h2>
+    <div id="output-list" class="output-list"></div>
+  </div>
+
+  <!-- Usage Analytics -->
+  <div class="section">
+    <h2>6. Usage Analytics</h2>
+    <canvas id="usageChart" height="150"></canvas>
+    <canvas id="starChart" height="150" style="margin-top:20px;"></canvas>
+  </div>
+
+<script>
+  // Mock Data
+  let promptOutputs = [
+    { timestamp: '2025-06-25 10:10', output: 'Generated image 1' },
+    { timestamp: '2025-06-24 14:32', output: 'Generated image 2' },
+    { timestamp: '2025-06-23 18:01', output: 'Generated image 3' },
+    { timestamp: '2025-06-22 09:45', output: 'Generated image 4' },
+    { timestamp: '2025-06-21 20:00', output: 'Generated image 5' }
+  ];
+
+  let versions = [
+    { ver: "1.0.0", date: "2025-06-01", note: "Initial prompt creation" },
+    { ver: "1.1.0", date: "2025-06-10", note: "Added modifiers" },
+    { ver: "1.2.3", date: "2025-06-20", note: "Improved details" }
+  ];
+
+  let executionCount = 42;
+  let starCount = 17;
+  let userStarred = false;
+
+  // Build Output List
+  const outputListEl = document.getElementById('output-list');
+  function renderOutputs() {
+    outputListEl.innerHTML = '';
+    for (const out of promptOutputs) {
+      const div = document.createElement('div');
+      div.className = 'output-item';
+      div.textContent = `[${out.timestamp}] - ${out.output}`;
+      outputListEl.appendChild(div);
+    }
+  }
+  renderOutputs();
+
+  // Build Versions List
+  const versionListEl = document.getElementById('version-list');
+  function renderVersions() {
+    versionListEl.innerHTML = '';
+    versions.forEach(({ver, date, note}, i) => {
+      const div = document.createElement('div');
+      div.className = 'version-item';
+      div.innerHTML = `
+        <div><strong>${ver}</strong> - ${date} - ${note}</div>
+        <button onclick="rollbackVersion(${i})">Rollback</button>
+      `;
+      versionListEl.appendChild(div);
+    });
+  }
+  renderVersions();
+
+  function rollbackVersion(index) {
+    alert(`Rolled back to version ${versions[index].ver}`);
+    // Here you'd implement actual rollback logic
+  }
+
+  // Shareable URL & Custom Slug
+  const shareUrlInput = document.getElementById('share-url');
+  const customSlugInput = document.getElementById('custom-slug');
+  const slugMsg = document.getElementById('slug-msg');
+
+  function saveSlug() {
+    const slug = customSlugInput.value.trim();
+    if (!slug) {
+      alert("Please enter a slug.");
+      return;
+    }
+    // In real app, you'd check availability, save on server
+    shareUrlInput.value = `https://yourdomain.com/${slug}`;
+    slugMsg.textContent = `Custom slug saved: ${slug}`;
+    customSlugInput.value = '';
+  }
+
+  // Star Rating
+  const starRatingEl = document.getElementById('star-rating');
+  const starCountEl = document.getElementById('star-count');
+
+  function renderStars() {
+    starRatingEl.innerHTML = '';
+    for(let i=1; i<=5; i++) {
+      const star = document.createElement('span');
+      star.textContent = '★';
+      star.className = i <= starCount/3.4 ? 'filled' : ''; // rough avg rating
+      star.dataset.value = i;
+      star.onclick = () => addStar(i);
+      starRatingEl.appendChild(star);
+    }
+    starCountEl.textContent = starCount;
+  }
+
+  function addStar(val) {
+    if(userStarred) {
+      alert("You already starred this prompt!");
+      return;
+    }
+    starCount++;
+    userStarred = true;
+    renderStars();
+  }
+
+  renderStars();
+
+  // Chart.js usage analytics
+  const ctxUsage = document.getElementById('usageChart').getContext('2d');
+  const ctxStars = document.getElementById('starChart').getContext('2d');
+
+  // Mock data for prompt usage over last 7 days
+  const usageLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const usageData = [5, 9, 7, 14, 10, 13, 15];
+
+  const usageChart = new Chart(ctxUsage, {
+    type: 'line',
+    data: {
+      labels: usageLabels,
+      datasets: [{
+        label: 'Prompt Usage Over Time',
+        data: usageData,
+        borderColor: '#1a73e8',
+        backgroundColor: 'rgba(26, 115, 232, 0.15)',
+        fill: true,
+        tension: 0.3,
+        pointRadius: 5
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: true }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: { stepSize: 2 }
+        }
+      }
+    }
+  });
+
+  // Star Trends - how many stars given over the week (mock)
+  const starTrendData = [1, 0, 2, 3, 1, 4, 5];
+  const starChart = new Chart(ctxStars, {
+    type: 'bar',
+    data: {
+      labels: usageLabels,
+      datasets: [{
+        label: 'Stars Given',
+        data: starTrendData,
+        backgroundColor: '#fbbf24'
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: true } },
+      scales: {
+        y: { beginAtZero: true, ticks: { stepSize: 1 } }
+      }
+    }
+  });
+</script>
+
+</body>
+</html>
