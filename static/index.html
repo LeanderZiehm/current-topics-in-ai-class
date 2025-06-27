@@ -12,19 +12,26 @@
       user-select: none;
     }
 
-        /* The main player square */
+    /* The main player square */
     #player {
-    position: absolute;
-    width: 50px;  /* or whatever size fits your image */
-    height: 50px;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    z-index: 10000; /* higher than shapes */
-    pointer-events: none; /* so clicks pass through */
-    user-select: none;
+      position: absolute;
+      width: 50px;  
+      height: 50px;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 10000; /* higher than shapes */
+      pointer-events: none; /* so clicks pass through */
+      user-select: none;
     }
 
+    #player img {
+      width: 100%;
+      height: 100%;
+      display: block;
+      pointer-events: none;
+      user-select: none;
+    }
 
     /* Container for inputs */
     #inputs {
@@ -104,6 +111,7 @@
       opacity: 0.9;
       box-shadow: 0 0 6px rgba(0,0,0,0.2);
       cursor: default;
+      user-select: none;
     }
     /* Square shape */
     .shape.square {
@@ -125,13 +133,25 @@
       box-shadow: none;
     }
 
+    /* Position label for shapes and player */
+    .pos-label {
+      position: absolute;
+      top: 62px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 12px;
+      color: #333;
+      user-select: none;
+      pointer-events: none;
+    }
   </style>
 </head>
 <body>
 
 <!-- Main player -->
 <div id="player">
-    <img id="player" src="static/player.png" alt="Player" />
+    <img src="static/player.png" alt="Player" />
+    <div class="pos-label" id="player-pos-label">(0, 0)</div>
 </div>
 
 <!-- Inputs for X Y -->
@@ -162,26 +182,20 @@
 
 <script>
   const player = document.getElementById('player');
+  const playerPosLabel = document.getElementById('player-pos-label');
   const inputX = document.getElementById('inputX');
   const inputY = document.getElementById('inputY');
 
   const btnSetPos = document.getElementById('btn-setpos');
   const buttons = document.querySelectorAll('#buttons button:not(#btn-setpos)');
 
-  // We'll place some colored shapes randomly in environment
-  // Format: { shape: 'triangle'|'square'|'circle', color: 'green'|'red'|'blue'|'yellow', element: HTMLElement, x: number, y: number }
   const environmentObjects = [];
 
-  // Helper to create shape divs with color and shape
   function createShape(shape, color, x, y) {
     const el = document.createElement('div');
     el.classList.add('shape', shape);
 
-    // Set color overrides based on color + shape
-    // Since some shapes use background color, others border color
-    // We'll override CSS variables or styles accordingly:
     if(shape === 'triangle') {
-      // triangle uses border-bottom color
       const colorMap = {
         green: 'green',
         red: 'red',
@@ -190,7 +204,6 @@
       };
       el.style.borderBottomColor = colorMap[color] || 'purple';
     } else {
-      // square & circle use backgroundColor
       const colorMap = {
         green: '#28a745',
         red: '#dc3545',
@@ -203,12 +216,17 @@
     el.style.left = x + 'px';
     el.style.top = y + 'px';
 
+    // Add label for position
+    const label = document.createElement('div');
+    label.classList.add('pos-label');
+    label.textContent = `(${Math.round(x)}, ${Math.round(y)})`;
+    el.appendChild(label);
+
     document.body.appendChild(el);
 
-    return el;
+    return {el, label};
   }
 
-  // Random positions for environment objects (avoid edges)
   function randomPos() {
     const margin = 80;
     return {
@@ -217,40 +235,29 @@
     };
   }
 
-  // Create some sample objects
   function createEnvironment() {
-    environmentObjects.length = 0; // clear if any
+    environmentObjects.length = 0; 
 
-    // Example: create one object of each shape/color combination that we'll support
-    // but only some actually created, so combo buttons work only for existing objects
-
-    // Let's create a few:
-    // green triangle
     let pos = randomPos();
-    environmentObjects.push({shape:'triangle', color:'green', element: createShape('triangle', 'green', pos.x, pos.y), x: pos.x, y: pos.y});
+    let {el, label} = createShape('triangle', 'green', pos.x, pos.y);
+    environmentObjects.push({shape:'triangle', color:'green', element: el, x: pos.x, y: pos.y, label});
 
-    // red square
     pos = randomPos();
-    environmentObjects.push({shape:'square', color:'red', element: createShape('square', 'red', pos.x, pos.y), x: pos.x, y: pos.y});
+    ({el, label} = createShape('square', 'red', pos.x, pos.y));
+    environmentObjects.push({shape:'square', color:'red', element: el, x: pos.x, y: pos.y, label});
 
-    // blue circle
     pos = randomPos();
-    environmentObjects.push({shape:'circle', color:'blue', element: createShape('circle', 'blue', pos.x, pos.y), x: pos.x, y: pos.y});
+    ({el, label} = createShape('circle', 'blue', pos.x, pos.y));
+    environmentObjects.push({shape:'circle', color:'blue', element: el, x: pos.x, y: pos.y, label});
 
-    // yellow square
     pos = randomPos();
-    environmentObjects.push({shape:'square', color:'yellow', element: createShape('square', 'yellow', pos.x, pos.y), x: pos.x, y: pos.y});
+    ({el, label} = createShape('square', 'yellow', pos.x, pos.y));
+    environmentObjects.push({shape:'square', color:'yellow', element: el, x: pos.x, y: pos.y, label});
   }
 
   createEnvironment();
 
   // Combo logic
-  // We want user to press in order: 
-  // 1) Set Position To button
-  // 2) Color button (green/red/blue/yellow)
-  // 3) Shape button (triangle/square/circle)
-  // If shape+color combo exists in environmentObjects, teleport the player.
-
   let comboStep = 0;
   let chosenColor = null;
 
@@ -274,10 +281,9 @@
         comboStep = 2;
         updateButtonHighlights();
       } else if(comboStep === 2 && type === 'shape') {
-        // Check if the environment has this color+shape combo
+        // Check if combo exists exactly
         const exists = environmentObjects.some(obj => obj.color === chosenColor && obj.shape === value);
         if(exists) {
-          // Teleport the player to inputX, inputY position
           teleportPlayer();
           alert(`Teleported to (${inputX.value}, ${inputY.value}) for ${chosenColor} ${value}!`);
         } else {
@@ -295,6 +301,7 @@
     });
   });
 
+  // Teleport player relative to center of viewport plus input offsets
   function teleportPlayer() {
     const x = parseInt(inputX.value, 10) || 0;
     const y = parseInt(inputY.value, 10) || 0;
@@ -302,32 +309,38 @@
     const centerX = window.innerWidth / 2;
     const centerY = window.innerHeight / 2;
 
-    const playerWidth = player.offsetWidth;
-    const playerHeight = player.offsetHeight;
-
-    const left = centerX + x - playerWidth / 2;
-    const top = centerY + y - playerHeight / 2;
+    // Calculate position, subtract half player size for centering
+    const left = centerX + x - player.offsetWidth / 2;
+    const top = centerY + y - player.offsetHeight / 2;
 
     player.style.left = left + 'px';
     player.style.top = top + 'px';
-    player.style.transform = ''; // clear transform since we use exact positioning
+    player.style.transform = ''; // remove translate to allow precise positioning
+
+    // Update label above player
+    playerPosLabel.textContent = `(${x}, ${y})`;
   }
 
-  // Highlight buttons to show combo progress
+  // Update player position whenever input values change (optional: debounce if needed)
+  function onInputChange() {
+    if(comboStep === 0) {
+      teleportPlayer();
+    }
+  }
+  inputX.addEventListener('input', onInputChange);
+  inputY.addEventListener('input', onInputChange);
+
   function updateButtonHighlights() {
-    // Reset all
     btnSetPos.style.opacity = '1';
     buttons.forEach(btn => btn.style.opacity = '1');
 
     if(comboStep === 1) {
-      // Set Position pressed, waiting for color => highlight color buttons
       btnSetPos.style.opacity = '0.5';
       buttons.forEach(btn => {
         if(btn.dataset.type === 'color') btn.style.opacity = '1';
         else btn.style.opacity = '0.3';
       });
     } else if(comboStep === 2) {
-      // Waiting for shape => highlight shape buttons only
       btnSetPos.style.opacity = '0.5';
       buttons.forEach(btn => {
         if(btn.dataset.type === 'shape') btn.style.opacity = '1';
@@ -339,7 +352,7 @@
   // Initialize player position at (0,0)
   teleportPlayer();
 
-  // Update player position on window resize so center stays consistent
+  // On window resize keep player centered with offsets
   window.addEventListener('resize', () => {
     if(comboStep === 0) teleportPlayer();
   });
