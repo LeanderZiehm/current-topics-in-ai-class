@@ -2,7 +2,7 @@ from agents.planner import plan
 from agents.caller import generate_tool_args
 from agents.answerer import answer
 from tools.tool_manger import ToolManager
-from tools.get_weather import get_weather#, get_news, search_web
+from tools.get_weather import get_weather
 
 functions = [get_weather]
 

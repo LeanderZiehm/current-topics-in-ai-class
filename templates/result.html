@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Query Result</title>
+    <style>
+        pre { background-color: #f0f0f0; padding: 10px; }
+        .section { margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <h1>Query Traceability</h1>
+
+    <div class="section">
+        <h2>User Query</h2>
+        <p>{{ trace.query }}</p>
+    </div>
+
+    <div class="section">
+        <h2>Planner Output</h2>
+        <pre>{{ trace.planner_output | tojson(indent=2) }}</pre>
+    </div>
+
+    <div class="section">
+        <h2>Tool Calls</h2>
+        {% for call in trace.tool_calls %}
+            <h3>Tool: {{ call.tool_name }}</h3>
+            <strong>Arguments:</strong>
+            <pre>{{ call.args | tojson(indent=2) }}</pre>
+            <strong>Response:</strong>
+            <pre>{{ call.response }}</pre>
+        {% endfor %}
+    </div>
+
+    <div class="section">
+        <h2>Final Answer</h2>
+        <pre>{{ trace.final_answer }}</pre>
+    </div>
+
+    <p><a href="{{ url_for('index') }}">Back to Query</a> | <a href="{{ url_for('logs') }}">View Logs</a></p>
+</body>
+</html>
