@@ -3,9 +3,9 @@ from restgpt.utils import clean_llm_json
 
 groq = Groq()
 
-def plan(user_query: str):
+def plan(user_query: str, tools: list) -> list:
     prompt = f"""
-You are a task planner that decomposes complex user instructions into a sequence of Python function calls.
+You are a task planner that decomposes complex user instructions into a sequence of Python function calls from the ones available:{tools}
 
 Each step should include:
 - The function name (snake_case)
@@ -17,7 +17,6 @@ Output format:
 [
   {{
     "function": "function_name",
-    "description": "What the function does"
   }},
   ...
 ]

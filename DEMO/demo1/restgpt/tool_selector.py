@@ -6,7 +6,7 @@ import json
 groq = Groq()
 
 def select_tool(task: dict, tools: list):
-    tools_str = ToolManager.get_tools_string()
+    tools = ToolManager.get_tools()
 
 
     prompt = f"""
@@ -16,7 +16,7 @@ Task:
 {json.dumps(task, indent=2)}
 
 Available Tools:
-{tools_str}
+{tools}
 
 Return the best match in JSON:
 {{ "tool": "<function_name>" }}
