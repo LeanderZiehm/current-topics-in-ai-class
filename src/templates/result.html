@@ -1,42 +1,135 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <title>Query Result</title>
-    <style>
-        pre { background-color: #f0f0f0; padding: 10px; }
-        .section { margin-bottom: 20px; }
-    </style>
+<meta charset="UTF-8" />
+<title>Query Traceability</title>
+<style>
+  body {
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    background: #f5f7fa;
+    margin: 0; padding: 20px;
+    color: #333;
+  }
+  h1, h2, h3, h4 {
+    color: #2c3e50;
+  }
+  .container {
+    max-width: 900px;
+    margin: auto;
+    background: white;
+    padding: 25px 30px;
+    border-radius: 8px;
+    box-shadow: 0 4px 18px rgba(0,0,0,0.1);
+  }
+  .section {
+    margin-bottom: 25px;
+  }
+  .collapsible {
+    background-color: #3498db;
+    color: white;
+    cursor: pointer;
+    padding: 12px 18px;
+    width: 100%;
+    border: none;
+    text-align: left;
+    outline: none;
+    font-size: 18px;
+    border-radius: 6px;
+    transition: background-color 0.3s ease;
+  }
+  .collapsible:hover {
+    background-color: #2980b9;
+  }
+  .content {
+    padding: 0 18px;
+    display: block;
+    overflow: hidden;
+    background-color: #ecf0f1;
+    margin-top: 8px;
+    border-radius: 0 0 6px 6px;
+  }
+  pre {
+    background-color: #fff;
+    border: 1px solid #ccc;
+    padding: 15px;
+    border-radius: 6px;
+    overflow-x: auto;
+    font-size: 14px;
+    line-height: 1.4;
+  }
+  .label {
+    font-weight: 600;
+    margin-top: 10px;
+  }
+  a {
+    color: #3498db;
+    text-decoration: none;
+    font-weight: 600;
+  }
+  a:hover {
+    text-decoration: underline;
+  }
+</style>
 </head>
 <body>
+  <div class="container">
     <h1>Query Traceability</h1>
-
+    
     <div class="section">
-        <h2>User Query</h2>
-        <p>{{ trace.query }}</p>
+      <h2>User Query</h2>
+      <p>{{ trace.query }}</p>
     </div>
 
-    <div class="section">
-        <h2>Planner Output</h2>
-        <pre>{{ trace.planner_output | tojson(indent=2) }}</pre>
+    <!-- Planner -->
+    <button class="collapsible">Planner Agent</button>
+    <div class="content">
+      <div class="label">Input:</div>
+      <pre>{{ trace.planner.input | tojson(indent=2) }}</pre>
+      <div class="label">Output:</div>
+      <pre>{{ trace.planner.output | tojson(indent=2) }}</pre>
     </div>
 
-    <div class="section">
-        <h2>Tool Calls</h2>
-        {% for call in trace.tool_calls %}
-            <h3>Tool: {{ call.tool_name }}</h3>
-            <strong>Arguments:</strong>
-            <pre>{{ call.args | tojson(indent=2) }}</pre>
-            <strong>Response:</strong>
-            <pre>{{ call.response }}</pre>
-        {% endfor %}
+    <!-- Caller + Tool calls -->
+    <button class="collapsible">Caller & Tool Calls ({{ trace.caller | length }})</button>
+    <div class="content">
+      {% for call in trace.caller %}
+        <h3>Tool: {{ call.tool_name }}</h3>
+        <div class="label">Caller Input (Task):</div>
+        <pre>{{ call.input | tojson(indent=2) }}</pre>
+
+        <div class="label">Caller Output (Generated Args):</div>
+        <pre>{{ call.output | tojson(indent=2) }}</pre>
+
+        <div class="label">Tool Returned Value:</div>
+        <pre>{{ call.returned }}</pre>
+        <hr />
+      {% endfor %}
     </div>
 
-    <div class="section">
-        <h2>Final Answer</h2>
-        <pre>{{ trace.final_answer }}</pre>
+    <!-- Answerer -->
+    <button class="collapsible">Answerer Agent</button>
+    <div class="content">
+      <div class="label">Input (Infos + User Query):</div>
+      <pre>{{ trace.answerer.input | tojson(indent=2) }}</pre>
+      <div class="label">Output (Final Answer):</div>
+      <pre>{{ trace.answerer.output }}</pre>
     </div>
 
-    <p><a href="{{ url_for('index') }}">Back to Query</a> | <a href="{{ url_for('logs') }}">View Logs</a></p>
+    <p><a href="{{ url_for('index') }}">Ask another Question</a></p>
+  </div>
+
+<script>
+  document.querySelectorAll('.collapsible').forEach(button => {
+    button.addEventListener('click', () => {
+      button.classList.toggle('active');
+      const content = button.nextElementSibling;
+      if (content.style.display === "block") {
+        content.style.display = "none";
+      } else {
+        content.style.display = "block";
+      }
+    });
+  });
+</script>
 </body>
 </html>
