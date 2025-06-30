@@ -1,5 +1,5 @@
 from flask import Flask, render_template
-from share import share_bp
+from DEMO.demo2.share import share_bp
 # from home import home_bp  # Import the blueprint
 
 app = Flask(__name__)
