@@ -2,6 +2,7 @@ import requests
 from datetime import datetime, timezone,timedelta
 
 
+#how do I make this typed?
 
 def get_weather(latitude=48.833195, longitude=12.961127,days_ahead=0):
 
