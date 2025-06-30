@@ -5,6 +5,16 @@ from datetime import datetime, timezone,timedelta
 #how do I make this typed?
 
 def get_weather(latitude=48.833195, longitude=12.961127,days_ahead=0):
+    """Get weather forecast for a given latitude and longitude.
+
+    Args:
+        latitude (float, optional): hi. Defaults to 48.833195.
+        longitude (float, optional): hi2. Defaults to 12.961127.
+        days_ahead (int, optional): hi3. Defaults to 0.
+
+    Returns:
+        _type_: _description_
+    """
 
     date = (datetime.utcnow() + timedelta(days=days_ahead)).strftime('%Y-%m-%d')
     # Build request URL

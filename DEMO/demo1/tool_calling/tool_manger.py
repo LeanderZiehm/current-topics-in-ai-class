@@ -1,5 +1,5 @@
 import inspect
-from typing import Dict, List, Any, Callable, Optional,get_type_hints
+from typing import Dict, List, Any, Callable, Optional,Tuple
 import re
 from tool_calling.tool import Tool
 
@@ -18,50 +18,84 @@ class ToolManager:
         """Get the list of tools."""
         return ToolManager.tools
     
+    @staticmethod
+    def list_tools() -> List[str]:
+        return list(ToolManager.tool_map.keys())
+
+    @staticmethod
+    def get_tool_schema(name: str) -> Optional[Dict[str, Any]]:
+        tool = ToolManager.tool_map.get(name)
+        return tool.to_dict() if tool else None
+
+    @staticmethod
+    def call_tool(name: str, arguments: Dict[str, Any]) -> Any:
+        tool = ToolManager.tool_map.get(name)
+        if not tool:
+            raise ValueError(f"Tool '{name}' not found.")
+        return tool.execute(arguments)
+
+
+    
+       
+    @staticmethod
+    def _infer_parameters_from_function(func: Callable) -> Tuple[Dict[str, Dict[str, Any]], List[str]]:
+        """
+        Infers parameters info and required parameter names from a function.
+
+        Returns:
+            parameters: Dict mapping parameter names to their info (type, description).
+            required_params: List of parameter names that are required.
+        """
+        sig = inspect.signature(func)
+        doc = ToolManager._parse_docstring(func.__doc__ or "")
+
+        def infer_type(name: str, param: inspect.Parameter, doc_param: Dict[str, Any]) -> str:
+            if param.annotation != inspect.Parameter.empty:
+                return ToolManager._python_type_to_openapi(param.annotation)
+            if param.default != inspect.Parameter.empty:
+                return ToolManager._python_type_to_openapi(type(param.default))
+            doc_type = doc_param.get("type")
+            if doc_type:
+                return doc_type
+            return "string"
+
+        parameters = {}
+        required_params = []
+
+        for name, param in sig.parameters.items():
+            doc_param = doc.get("params", {}).get(name, {})
+            param_type = infer_type(name, param, doc_param)
+
+            param_info = {
+                "type": param_type,
+                "description": doc_param.get("description", ""),
+            }
+
+            if param.default is inspect.Parameter.empty:
+                required_params.append(name)
+
+            parameters[name] = param_info
+
+        return parameters, required_params
+
     
     @staticmethod
-    def _convert_functions_to_tools(functions: List[Callable]) -> List[Tool]:
+    def _convert_functions_to_tools(functions: List[Callable]) -> List['Tool']:
         tools = []
-        
-        def infer_type(func: Callable) -> str:
-            for name, param in sig.parameters.items():
-                default_val = param.default
-                inferred_type = type(default_val).__name__ if default_val is not inspect.Parameter.empty else 'unknown'
-                print(f"XX (parameter) {name}: {inferred_type}")
 
         for func in functions:
-            sig = inspect.signature(func)
-            print(f"Processing function: {func.__name__} with signature: {sig}")
-            infer_type(func)
+            # print(f"Processing function: {func.__name__} with signature: {inspect.signature(func)}")
 
-            doc = ToolManager._parse_docstring(func.__doc__)
-
-            parameters = {}
-            required_params = []
-
-            for name, param in sig.parameters.items():
-                annotation = param.annotation
-                param_type = ToolManager._python_type_to_openapi(
-                    annotation if annotation != inspect.Parameter.empty else str
-                )
-                param_info = {
-                    "type": param_type,
-                    "description": doc["params"].get(name, {}).get("description", ""),
-                }
-
-                if param.default is inspect.Parameter.empty:
-                    required_params.append(name)
-
-                parameters[name] = param_info
+            parameters, required_params = ToolManager._infer_parameters_from_function(func)
+            doc = ToolManager._parse_docstring(func.__doc__ or "")
 
             tool = Tool(
                 name=func.__name__,
-                description=doc["description"],
+                description=doc.get("description", ""),
                 parameters=parameters,
                 function=func,
                 required_params=required_params,
             )
-
             tools.append(tool)
 
         return tools
@@ -101,23 +135,8 @@ class ToolManager:
             float: "number",
             bool: "boolean",
         }
-        print(f"Mapping type: {typ} to OpenAPI type")
+        # print(f"Mapping type: {typ} to OpenAPI type")
         if isinstance(typ, type) and typ in mapping:
             return mapping[typ]
         return mapping.get(typ, "string")
-
-    @staticmethod
-    def list_tools() -> List[str]:
-        return list(ToolManager.tool_map.keys())
-
-    def get_tool_schema(name: str) -> Optional[Dict[str, Any]]:
-        tool = ToolManager.tool_map.get(name)
-        return tool.to_dict() if tool else None
-
-    @staticmethod
-    def call_tool(name: str, arguments: Dict[str, Any]) -> Any:
-        tool = ToolManager.tool_map.get(name)
-        if not tool:
-            raise ValueError(f"Tool '{name}' not found.")
-        return tool.execute(arguments)
 
