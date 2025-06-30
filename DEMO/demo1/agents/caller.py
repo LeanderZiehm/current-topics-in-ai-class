@@ -1,6 +1,6 @@
 from llms.groq import Groq
-from restgpt.utils import clean_llm_json
-from tool_calling.tool_manger import ToolManager
+from agents.utils import clean_llm_json
+from tools.tool_manger import ToolManager
 import json
 
 groq = Groq()

@@ -1,5 +1,5 @@
 from llms.groq import Groq
-from restgpt.utils import clean_llm_json
+from agents.utils import clean_llm_json
 
 groq = Groq()
 
