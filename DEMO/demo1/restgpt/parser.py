@@ -1,21 +1,18 @@
 from llms.groq import Groq
-from restgpt.utils import clean_llm_json
 from tool_calling.tool_manger import ToolManager
 import json
 
 groq = Groq()
 
-def parse_response(api_name: str, raw_response: dict):
-    apis = ToolManager.get_tools()
-    api_info = next(api for api in apis if api["name"] == api_name)
-    
-    prompt = f"""
-You are a response parser. Given an API's response schema and actual JSON result,
-generate a concise and human-readable answer.
+def parse_response(tool_name: str, raw_response: dict):
+    tools = ToolManager.get_tools()
+    tool_info = next(tool for tool in tools if tool["name"] == tool_name)
 
-API: {api_name}
-Response Schema: {json.dumps(api_info.get("response_schema", {}), indent=2)}
-Raw Response: {json.dumps(raw_response, indent=2)}
+    prompt = f"""
+You are a response formatter. Given a tool name and its return value, generate a concise human-readable summary.
+
+Tool: {tool_name}
+Raw Result: {json.dumps(raw_response, indent=2)}
 
 Answer:
 """

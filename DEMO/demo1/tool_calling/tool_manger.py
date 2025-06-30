@@ -5,6 +5,11 @@ from tool_calling.tool import Tool
 
 class ToolManager:
     """Class to convert functions to tool format and call them by name."""
+    
+    def __init__(self, functions: List[Callable]):
+        """Initialize ToolManager with a list of functions."""
+        ToolManager.set_tools(functions)
+        
 
     @staticmethod
     def set_tools(functions: List[Callable]):
@@ -17,6 +22,12 @@ class ToolManager:
     def get_tools() -> List[Tool]:
         """Get the list of tools."""
         return ToolManager.tools
+    
+    def get_tools_string() -> str:
+        """Get a string representation of the tools."""
+        return "\n".join([str(tool.to_dict()) for tool in ToolManager.tools])
+
+    
     
     @staticmethod
     def list_tools() -> List[str]:

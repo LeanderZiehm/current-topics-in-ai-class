@@ -5,21 +5,21 @@ import json
 
 groq = Groq()
 
-def generate_api_call(sub_task: dict, api_name: str):
-    apis = ToolManager.get_tools()
-    api_info = next(api for api in apis if api["name"] == api_name)
-    
+def generate_tool_args(task: dict, tool_name: str):
+    tools = ToolManager.get_tools()
+    tool_info = next(tool for tool in tools if tool["name"] == tool_name)
+
     prompt = f"""
-You are an API caller. You are given a sub-task and an API specification.
-Generate valid parameters to call the API based on the sub-task.
+You are a Python function caller. Given a task and a function spec, generate the arguments needed to call the function.
 
-Sub-task: {sub_task}
+Task:
+{json.dumps(task, indent=2)}
 
-API Spec:
-{json.dumps(api_info, indent=2)}
+Function Spec:
+{json.dumps(tool_info, indent=2)}
 
-Return the parameters as JSON:
+Return the arguments as a JSON object.
 """
     raw = groq.generate_response(prompt)
-    print("📞 Caller raw:", raw)
+    print("📞 Caller raw:\n", raw)
     return clean_llm_json(raw)
