@@ -3,6 +3,7 @@ from typing import Dict, List, Any, Callable, Optional, Tuple
 import re
 import json
 
+
 class ToolManager:
     """Manages tool functions and their execution."""
     

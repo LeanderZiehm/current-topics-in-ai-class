@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Prompt Sharing & Image Generator</title>
+  <style>
+     * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      font-family: sans-serif;
+      height: 100vh;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* Sidebar */
+    #sidebar {
+      width: 300px;
+      border-right: 1px solid #ddd;
+      padding: 10px;
+      box-sizing: border-box;
+      background: #f9f9f9;
+      overflow-y: auto;
+      user-select: none; /* disable text selection in sidebar */
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+    }
+    .chip {
+      display: inline-block;
+      background: #e0e0e0;
+      padding: 6px 12px;
+      margin: 4px;
+      border-radius: 16px;
+      font-size: 13px;
+      cursor: pointer;
+      user-select: none; /* disable text selection on each chip */
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      transition: background-color 0.2s, color 0.2s;
+    }
+    .chip.selected {
+      background-color: #1a73e8;
+      color: white;
+      font-weight: bold;
+    }
+
+    /* Main Area */
+    #main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    #top-bar {
+      height: 40px;
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      padding: 0 10px;
+      background: #fafafa;
+      border-bottom: 1px solid #ccc;
+    }
+    #top-bar a {
+      text-decoration: none;
+      color: #1a73e8;
+      font-weight: bold;
+    }
+
+    #image-container {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: #fff;
+      position: relative;
+      overflow: hidden;
+    }
+
+    #image-container img {
+      max-width: 90%;
+      max-height: 90%;
+      object-fit: contain;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      display: none; /* hide initially */
+    }
+
+    /* Prompt Bar */
+    #prompt-bar {
+      position: absolute;
+      bottom: 0;
+      left: 0px; /* match sidebar width */
+      right: 0;
+      background: #ffffff;
+      border-top: 1px solid #ccc;
+      padding: 10px;
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      z-index: 10;
+    }
+
+    #chip-container {
+      display: flex;
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      max-width: calc(100% - 150px); /* leave space for input and button */
+    }
+
+    .prompt-chip {
+      background:#1a73e8;
+      color:white;
+      padding: 4px 10px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      font-size: 14px;
+      margin-right: 5px;
+      white-space: nowrap;
+    }
+
+    .prompt-chip button {
+      background: none;
+      border: none;
+      margin-left: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      line-height: 1;
+    }
+
+    #prompt-input {
+      flex-grow: 1;
+      min-width: 100px;
+      border: 1px solid #ccc;
+      border-radius: 12px;
+      padding: 6px 10px;
+      font-size: 14px;
+    }
+
+    #send-btn {
+      padding: 8px 16px;
+      background: #1a73e8;
+      color: white;
+      border: none;
+      border-radius: 16px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    @media (max-width: 600px) {
+      #sidebar {
+        display: none;
+      }
+      #prompt-bar {
+        left: 0;
+      }
+    }
+
+    #loading-spinner {
+      position: absolute;
+      width: 60px;
+      height: 60px;
+      border: 6px solid #ccc;
+      border-top: 6px solid #1a73e8;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      z-index: 5;
+      display: none;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* Share Modal */
+    #share-modal { position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.4);display:none;justify-content:center;align-items:center; z-index: 1000; }
+    .modal { background:#fff;padding:20px;border-radius:8px;width:320px;box-shadow:0 4px 12px rgba(0,0,0,0.2); }
+    .modal h2{margin-top:0;}
+    .modal label{display:block;margin:10px 0 4px;font-weight:600;}
+    .modal input, .modal select{width:100%;padding:6px;border:1px solid #ccc;border-radius:6px;}
+    .modal .tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:4px;}
+    .modal .tags input{flex:1;}
+    .modal .modal-actions{margin-top:15px;text-align:right;}
+    .modal .modal-actions button{margin-left:8px;padding:6px 14px;border:none;border-radius:6px;cursor:pointer;}
+    .modal .modal-actions .close {background:#ddd;}
+    .modal .modal-actions .save {background:#1a73e8;color:#fff;}
+  </style>
+</head>
+<body>
+
+  <!-- Sidebar with prompt chips -->
+  <div id="sidebar"></div>
+
+  <!-- Main container -->
+  <div id="main">
+    <div id="top-bar">
+
+      <div class="actions">
+        <button id="analytics-btn" title="Analytics 📊">📊</button>
+     
+        <button id="share-btn"  class="btn relative btn-ghost text-token-text-primary" aria-label="Share" data-testid="share-chat-button" style="view-transition-name:var(--vt_share_chat_wide_button)"><div class="flex w-full items-center justify-center gap-1.5"><svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-label="" class="-ms-0.5 icon"><path d="M2.66821 12.6663V12.5003C2.66821 12.1331 2.96598 11.8353 3.33325 11.8353C3.70052 11.8353 3.99829 12.1331 3.99829 12.5003V12.6663C3.99829 13.3772 3.9992 13.8707 4.03052 14.2542C4.0612 14.6298 4.11803 14.8413 4.19849 14.9993L4.2688 15.1263C4.44511 15.4137 4.69813 15.6481 5.00024 15.8021L5.13013 15.8577C5.2739 15.9092 5.46341 15.947 5.74536 15.97C6.12888 16.0014 6.62221 16.0013 7.33325 16.0013H12.6663C13.3771 16.0013 13.8707 16.0014 14.2542 15.97C14.6295 15.9394 14.8413 15.8825 14.9993 15.8021L15.1262 15.7308C15.4136 15.5545 15.6481 15.3014 15.802 14.9993L15.8577 14.8695C15.9091 14.7257 15.9469 14.536 15.97 14.2542C16.0013 13.8707 16.0012 13.3772 16.0012 12.6663V12.5003C16.0012 12.1332 16.2991 11.8355 16.6663 11.8353C17.0335 11.8353 17.3313 12.1331 17.3313 12.5003V12.6663C17.3313 13.3553 17.3319 13.9124 17.2952 14.3626C17.2624 14.7636 17.1974 15.1247 17.053 15.4613L16.9866 15.6038C16.7211 16.1248 16.3172 16.5605 15.8215 16.8646L15.6038 16.9866C15.227 17.1786 14.8206 17.2578 14.3625 17.2952C13.9123 17.332 13.3553 17.3314 12.6663 17.3314H7.33325C6.64416 17.3314 6.0872 17.332 5.63696 17.2952C5.23642 17.2625 4.87552 17.1982 4.53931 17.054L4.39673 16.9866C3.87561 16.7211 3.43911 16.3174 3.13501 15.8216L3.01294 15.6038C2.82097 15.2271 2.74177 14.8206 2.70435 14.3626C2.66758 13.9124 2.66821 13.3553 2.66821 12.6663ZM9.33521 12.5003V4.9388L7.13696 7.13704C6.87732 7.39668 6.45625 7.39657 6.19653 7.13704C5.93684 6.87734 5.93684 6.45631 6.19653 6.19661L9.52954 2.86263L9.6311 2.77962C9.73949 2.70742 9.86809 2.66829 10.0002 2.66829C10.1763 2.66838 10.3454 2.73819 10.47 2.86263L13.804 6.19661C14.0633 6.45628 14.0634 6.87744 13.804 7.13704C13.5443 7.39674 13.1222 7.39674 12.8625 7.13704L10.6653 4.93977V12.5003C10.6651 12.8673 10.3673 13.1652 10.0002 13.1654C9.63308 13.1654 9.33538 12.8674 9.33521 12.5003Z"></path></svg>Share</div></button>
+      </div>
+    </div>
+
+    <div id="image-container">
+      <div id="loading-spinner"></div>
+      <img id="resultImage" alt="" />
+    </div>
+
+    <div id="prompt-bar">
+      <div id="chip-container"></div>
+      <input type="text" id="prompt-input" placeholder="Type or add tags…" />
+      <button id="send-btn">Send</button>
+    </div>
+  </div>
+
+  <!-- Share modal -->
+  <div id="share-modal">
+    <div class="modal">
+      <h2>Share Prompt</h2>
+      <label>Access:</label>
+      <select id="access-level">
+        <option value="public">Anyone with link</option>
+        <option value="private">Private</option>
+        <option value="shared">Shared users</option>
+      </select>
+      <label>Permissions:</label>
+      <select id="permissions">
+        <option value="view">Can view</option>
+        <option value="edit">Can edit</option>
+      </select>
+      <label>URL:</label>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <input type="text" id="share-url" />
+      
+      </div>
+      <label>Tags:</label>
+      <div class="tags"><input type="text" id="tag-input" placeholder="Add tag and press Enter"/></div>
+      <label>Version:</label>
+      <input type="text" id="version-input" value="1.0.0" />
+      <div class="modal-actions">
+        <button class="close" onclick="closeShare()">Cancel</button>
+        <button class="save" onclick="saveShare()">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /** Sidebar content JSON */
+    const sidebarData = {
+      "Subjects": [
+        { label: "Woman", text: "portrait of a Woman" },
+        { label: "Man", text: "portrait of a Man" },
+        { label: "Fox", text: "portrait of a fox" },
+        { label: "Cube", text: "portrait of a cub" },
+        { label: "UFO", text: "portrait of a UFO" },
+        { label: "Elephant", text: "portrait of a Elephant" },
+        { label: "Zombie", text: "portrait of a Zombie" },
+        { label: "Rolls-Royce", text: "portrait of a Rolls-Royce" },
+        { label: "Cityscape", text: "futuristic cityscape" },
+        { label: "Knight", text: "heroic knight in armor" },
+        { label: "Cyberpunk Girl", text: "cyberpunk girl with neon lights" }
+      ],
+      "Artists": [
+        { label: "Leonardo Da vinci", text: "by Leonardo Da vinci" },
+        { label: "Picasso", text: "by Picasso" },
+        { label: "Ghibli", text: "by Studio Ghibli" },
+        { label: "Rutkowski", text: "by Greg Rutkowski" },
+        { label: "Raja Ravi Varma", text: "in the style of Raja Ravi Varma" },
+        { label: "Ukiyo-e", text: "in the style of Ukiyo-e" },
+        { label: "Caravaggio", text: "chiaroscuro style by Caravaggio" },
+        { label: "Loish", text: "soft stylization by Loish" },
+        { label: "Art Nouveau", text: "inspired by Art Nouveau" }
+      ],
+      "Modifiers": [
+        { label: "Hyper-realistic", text: "hyper-realistic" },
+        { label: "Cinematic", text: "cinematic lighting" },
+        { label: "35mm Lens", text: "35 mm lens" },
+        { label: "Anamorphic Bokeh", text: "anamorphic bokeh" },
+        { label: "God Rays", text: "god rays and volumetric light" },
+        { label: "Film Grain", text: "subtle film grain" }
+      ],
+      "Color Grading & LUTs": [
+        { label: "Teal-Orange", text: "teal and orange color grading" },
+        { label: "Cine LUT", text: "cinematic LUT applied" },
+        { label: "Kodak Portra", text: "Kodak Portra 400 film style" },
+        { label: "Velvia", text: "Fujifilm Velvia saturation" },
+        { label: "Muted Earth", text: "muted earth tone palette" }
+      ],
+      "Composition & Aspect Ratios": [
+        { label: "Rule of Thirds", text: "rule of thirds composition" },
+        { label: "Golden Ratio", text: "golden ratio composition" },
+        { label: "Centered Subject", text: "centered subject framing" }
+      ]
+    };
+
+    const sidebar = document.getElementById('sidebar');
+    const chipContainer = document.getElementById('chip-container');
+    const promptInput = document.getElementById('prompt-input');
+    const sendBtn = document.getElementById('send-btn');
+
+    const shareBtn = document.getElementById('share-btn');
+    const shareModal = document.getElementById('share-modal');
+    const shareUrl = document.getElementById('share-url');
+    const editSlug = document.getElementById('edit-slug');
+    const tagInput = document.getElementById('tag-input');
+    const versionInput = document.getElementById('version-input');
+
+    const analyticsBtn = document.getElementById('analytics-btn');
+
+    // Build sidebar
+    Object.entries(sidebarData).forEach(([sec, items])=>{
+      const h = document.createElement('h4'); h.textContent=sec; sidebar.append(h);
+      items.forEach(it=>{
+        const c = document.createElement('div'); c.className='chip'; c.dataset.text=it.text; c.textContent=it.label;
+        c.addEventListener('click',()=>togglePromptChip(it.text));
+        sidebar.append(c);
+      });
+    });
+
+    function togglePromptChip(text){
+      const existing = Array.from(chipContainer.children).find(c=>c.firstChild.textContent===text);
+      existing ? existing.remove() : addPromptChip(text);
+      updateSidebarSelection();
+    }
+
+    function addPromptChip(text){
+      if (Array.from(chipContainer.children).find(c=>c.firstChild.textContent===text)) return;
+      const pc = document.createElement('div'); pc.className='prompt-chip'; pc.textContent=text;
+      const b = document.createElement('button'); b.textContent='×'; b.onclick=()=>{pc.remove();updateSidebarSelection();};
+      pc.append(b); chipContainer.append(pc); updateSidebarSelection();
+    }
+
+    function updateSidebarSelection(){
+      const sel=Array.from(chipContainer.children).map(c=>c.firstChild.textContent);
+      document.querySelectorAll('#sidebar .chip').forEach(c=> c.classList.toggle('selected', sel.includes(c.dataset.text)));
+    }
+
+    promptInput.addEventListener('keydown',e=>{ if(e.key==='Enter'&&promptInput.value.trim()){ addPromptChip(promptInput.value.trim()); promptInput.value=''; } });
+
+    function getPromptText(){
+      const chips = Array.from(chipContainer.children).map(c=>c.firstChild.textContent);
+      const txt = promptInput.value.trim();
+      return chips.concat(txt? [txt] : []).join(', ');
+    }
+
+    sendBtn.addEventListener('click', async ()=>{
+      const prompt = getPromptText();
+      if(!prompt){ alert('Add content!'); return; }
+      promptInput.value = '';
+      document.getElementById('loading-spinner').style.display='block';
+      const img = document.getElementById('resultImage'); img.style.display='none';
+      // Simulate API
+      await new Promise(r=>setTimeout(r,1500));
+      img.src = 'https://picsum.photos/600/400?random=' + Math.random();
+      img.onload=()=>{ img.style.display='block'; document.getElementById('loading-spinner').style.display='none'; };
+    });
+
+
+    <!-- console.log(shareBtn); -->
+    // Share logic
+    shareBtn.onclick = ()=>{
+      shareUrl.value = location.origin + '/'+ Math.random().toString(36).substr(2,6);
+      shareModal.style.display='flex';
+    };
+    
+    
+    tagInput.addEventListener('keydown', e=>{
+      if(e.key==='Enter' && tagInput.value.trim()){
+        const span = document.createElement('span'); span.className='chip'; span.textContent=tagInput.value.trim(); shareUrl.parentNode.querySelector('.tags').append(span);
+        tagInput.value='';
+      }
+    });
+    
+    window.closeShare = ()=> shareModal.style.display='none';
+    window.saveShare = ()=>{
+      alert('Prompt shared at:\n'+shareUrl.value+'\nTags saved, version '+versionInput.value);
+      shareModal.style.display='none';
+    };
+
+    analyticsBtn.onclick = ()=> location.href = '/analytics';
+
+  </script>
+</body>
+</html>

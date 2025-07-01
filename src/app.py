@@ -4,10 +4,16 @@ from agents.caller import generate_tool_args
 from agents.answerer import answer
 from tools.tool_manger import ToolManager
 from tools.get_weather import get_weather
+from tools.get_databse_schema import get_schema_description
+from tools.get_disk_usage import get_disk_usage
+from tools.search import brave_search
+
+
 
 app = Flask(__name__)
 
-functions = [get_weather]
+functions = [get_weather, get_schema_description, get_disk_usage, brave_search]
+
 ToolManager.set_tools(functions)
 tools = ToolManager.get_tools()
 

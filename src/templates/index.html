@@ -92,14 +92,14 @@
 </head>
 <body>
   <div class="container">
-    <h1>City temperature checker.</h1>
+    <h1>Integated Prompts with External Systems.</h1>
 
     {% if error %}
       <p class="error-message">{{ error }}</p>
     {% endif %}
 
     <form method="POST" action="/">
-      <textarea name="user_query" placeholder="Type your question here..."></textarea>
+      <textarea name="user_query" placeholder="Type your question you want from external systems here..."></textarea>
       <button type="submit">Submit</button>
     </form>
 
